@@ -1,105 +1,43 @@
 <script>
-	import { element } from "svelte/internal";
+	import JSZip from "jszip";
+	import { nanoid } from "nanoid";
+	import { saveAs } from "file-saver";
+	import dateFormat from "dateformat";
 
-	import streamToBlob from "stream-to-blob";
+	import {
+		Container,
+		Button,
+		Row,
+		Col,
+		ListGroup,
+		ListGroupItem,
+		DropdownItem,
+		DropdownMenu,
+		DropdownToggle,
+		UncontrolledDropdown,
+		InputGroupText,
+		InputGroup,
+		InputGroupAddon,
+		Input,
+	} from "sveltestrap";
+
+	import codeOptions from "./codeOptions";
+	import { now } from "svelte/internal";
 
 	let name = "world";
 	let userText = "";
-	let selectedOption;
+	let selectedOption = null;
+	let codeOptionIndex = null;
 	let codeUrl = null;
+
+	let optionText = "";
+	let dropDownIsOpen = false;
 
 	let codeUrls = [];
 
-	let codeOptions = [
-		{
-			id: 2,
-			multiples: 1,
-			text: `datamatrix small`,
-			options: {
-				bcid: "datamatrix",
-				version: "48x48",
-				format: "square",
-			},
-		},
-		{
-			id: 1,
-			multiples: 1,
-			text: `datamatrix medium`,
-			options: {
-				bcid: "datamatrix",
-				version: "96x96",
-				format: "square",
-			},
-		},
-		{
-			id: 2,
-			multiples: 1,
-			text: `datamatrix large square`,
-			options: {
-				bcid: "datamatrix",
-				format: "square",
-				version: "144x144",
-			},
-		},
-		{
-			id: 2,
-			multiples: 1,
-			text: `datamatrix large rect`,
-			options: {
-				bcid: "datamatrixrectangularextension",
-				rotate: "R",
-				version: "8x120",
-				/* format: "rectangle",
-				columns: 144,
-				rows: 96, */
-			},
-		},
-		{
-			id: 2,
-			multiples: 8,
-			text: `datamatrix large multiple`,
-			options: {
-				bcid: "datamatrixrectangularextension",
+	let linkElement;
 
-				version: "8x120",
-				/* format: "rectangle",
-				columns: 144,
-				rows: 96, */
-			},
-		},
-		{
-			id: 3,
-			multiples: 1,
-			text: `codablock large`,
-			options: {
-				bcid: "codablockf",
-				version: "192x192",
-				columns: 20,
-				rows: 28,
-				rowheight: 6,
-				sepheight: 1,
-				rotate: "R",
-			},
-		},
-		{
-			id: 5,
-			multiples: 1,
-			text: `Code One small`,
-			options: {
-				bcid: "codeone",
-				version: "C",
-			},
-		},
-		{
-			id: 6,
-			multiples: 1,
-			text: `Code One large`,
-			options: {
-				bcid: "codeone",
-				version: "H",
-			},
-		},
-	];
+	let downloadUrl, downloadFilename;
 
 	const splitArray = (inArray, chunkCount) => {
 		const slots = new Array();
@@ -140,43 +78,111 @@
 			const url = `https://api-bwipjs.metafloor.com/${queryString}`;
 			return url;
 		});
-
-		console.log(queries);
-
 		codeUrls = queries;
 	}
 
-	function submitHandler(e) {
-		result = getResult();
-	}
-
 	const downloadFiles = async () => {
-		const resp = await fetch(codeUrls[0]);
-		console.log(resp);
+		const zip = new JSZip();
+		const blobs = await Promise.all(
+			codeUrls.map(async (code, i) => {
+				const resp = await fetch(code);
+				const blob = await resp.blob();
+				downloadFilename = `download-${i}.png`;
+				zip.file(downloadFilename, blob);
+			})
+		);
 
-		const imageBlob = await streamToBlob(resp.body);
-		console.log(imageBlob);
+		const now = new Date();
+		const dateString = dateFormat(now, "yymmdd-hh-mm");
+		const uuid = nanoid();
+		const archiveName = `${dateString}-${uuid}.zip`;
+
+		const projectDetails = {
+			...selectedOption,
+			userText,
+			timestamp: Date.now(),
+			archiveName,
+		};
+
+		zip.file("settings.json", JSON.stringify(projectDetails));
+		const archive = await zip.generateAsync({ type: "blob" });
+		saveAs(archive, archiveName);
 	};
 </script>
 
-<h1>Hello {name}!</h1>
-<form on:submit|preventDefault={setCodeUrl}>
-	<select bind:value={selectedOption}>
-		{#each codeOptions as codeOption}
-			<option value={codeOption}>{codeOption.text}</option>
-		{/each}
-	</select>
+<style>
+	.top-buffer {
+		margin-top: 20px;
+	}
 
-	<input bind:value={userText} />
+	.bottom-buffer {
+		margin-bottom: 20px;
+	}
+</style>
 
-	<button type="submit"> create code </button>
-</form>
-<p>{userText}</p>
-<button on:click={downloadFiles}>download</button>
-<div>
-	{#if codeUrl}<img src={codeUrl} alt="d" />{/if}
-</div>
+<Container>
+	<div class="row bottom-buffer">
+		<h1>code-generator</h1>
+	</div>
 
-<div>
-	{#each codeUrls as url, i}<img src={url} alt={i} />{/each}
-</div>
+	<div class="row">
+		<Col xs="5">
+			<div class="row">
+				<Col>
+					<UncontrolledDropdown bind:value={optionText}>
+						<DropdownToggle caret style="width: 100%">
+							{selectedOption ? selectedOption.text : 'select code'}
+						</DropdownToggle>
+						<DropdownMenu style={{ width: '100%' }}>
+							{#each codeOptions as codeOption, i}
+								<DropdownItem
+									on:click={() => {
+										codeOptionIndex = i;
+										selectedOption = codeOption;
+									}}>
+									{codeOption.text}
+								</DropdownItem>
+							{/each}
+						</DropdownMenu>
+					</UncontrolledDropdown>
+				</Col>
+			</div>
+			<div class="row  top-buffer">
+				<Col>
+					<Button
+						block
+						on:click={setCodeUrl}
+						disabled={selectedOption === null || userText.length === 0}
+						color="primary">
+						encode
+					</Button>
+				</Col>
+				<Col>
+					<Button
+						block
+						on:click={downloadFiles}
+						disabled={codeUrls.length === 0}
+						color="success">
+						download
+					</Button>
+				</Col>
+			</div>
+
+			<div class="row top-buffer">
+				<Col>
+					<Input
+						type="textarea"
+						style="height: 400px;resize: none"
+						bind:value={userText} />
+				</Col>
+			</div>
+		</Col>
+		<Col xs="7">
+			{#each codeUrls as url, i}
+				<div class={i === 0 ? 'row' : 'row top-buffer'}>
+					<img src={url} alt={i} />
+				</div>
+			{/each}
+		</Col>
+	</div>
+</Container>
