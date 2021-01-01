@@ -4,7 +4,10 @@
 	import { saveAs } from "file-saver";
 	import dateFormat from "dateformat";
 
+	import loremIpsum from './loremipsum'
+
 	import {
+		Alert,
 		Container,
 		Button,
 		Col,
@@ -19,6 +22,7 @@
 
 	let userText = "";
 	let selectedOption = null;
+	let codeOptionIndex = null;
 	let optionText = "";
 
 	let codeUrls = [];
@@ -51,6 +55,10 @@
 
 	function setCodeUrl() {
 		const queryParams = { ...selectedOption.options };
+
+		if(userText.length > selectedOption.capacity){
+			alert(`not enough capacity in code: ${userText.length} -> ${selectedOption.capacity}`)
+		}
 
 		const textSplit = userText.split("");
 		console.log(textSplit);
@@ -101,7 +109,6 @@
 	.top-buffer {
 		margin-top: 20px;
 	}
-
 	.bottom-buffer {
 		margin-bottom: 20px;
 	}
@@ -157,11 +164,42 @@
 
 			<div class="row top-buffer">
 				<Col>
-					<Input
+					<div class="row">
+						<Input
 						type="textarea"
 						style="height: 400px;resize: none"
-						bind:value={userText} />
-				</Col>
+						bind:value={userText}
+						/>
+					</div>
+
+					
+
+					<div class="row top-buffer">
+						<Button
+							block
+							on:click={() => {userText = loremIpsum}}
+							>
+							fill with placeholder text
+						</Button>
+					</div>
+
+					{#if selectedOption !== null}
+					{#if selectedOption.capacity < userText.length}
+					
+					<div class="row top-buffer">
+					<Alert color='primary'>
+						<h4 class="alert-heading text-capitalize">exceeding code cacacity</h4>
+						Code capacity too small. Text will be split across
+						 multiple codes.
+						Capacity: {selectedOption.capacity}
+						Textlength: {userText.length}
+					  </Alert>
+					  
+					</div>
+					
+								{/if}
+								{/if}
+			</Col>
 			</div>
 		</Col>
 		<Col xs="7">
