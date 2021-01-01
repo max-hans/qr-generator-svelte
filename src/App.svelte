@@ -7,37 +7,23 @@
 	import {
 		Container,
 		Button,
-		Row,
 		Col,
-		ListGroup,
-		ListGroupItem,
 		DropdownItem,
 		DropdownMenu,
 		DropdownToggle,
 		UncontrolledDropdown,
-		InputGroupText,
-		InputGroup,
-		InputGroupAddon,
 		Input,
 	} from "sveltestrap";
 
 	import codeOptions from "./codeOptions";
-	import { now } from "svelte/internal";
 
-	let name = "world";
 	let userText = "";
 	let selectedOption = null;
-	let codeOptionIndex = null;
-	let codeUrl = null;
-
 	let optionText = "";
-	let dropDownIsOpen = false;
 
 	let codeUrls = [];
 
-	let linkElement;
-
-	let downloadUrl, downloadFilename;
+	let downloadFilename;
 
 	const splitArray = (inArray, chunkCount) => {
 		const slots = new Array();
@@ -83,7 +69,8 @@
 
 	const downloadFiles = async () => {
 		const zip = new JSZip();
-		const blobs = await Promise.all(
+		
+		await Promise.all(
 			codeUrls.map(async (code, i) => {
 				const resp = await fetch(code);
 				const blob = await resp.blob();
